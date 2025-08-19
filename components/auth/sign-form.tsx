@@ -51,7 +51,7 @@ export function SignupForm({
     },
   });
 
-  const signinWithGoogle = async () => {
+  const signupWithGoogle = async () => {
     await authClient.signIn.social({
       provider: "google",
       callbackURL: "/dashboard",
@@ -82,14 +82,14 @@ export function SignupForm({
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Welcome</CardTitle>
-          <CardDescription>Login with your Google account</CardDescription>
+          <CardDescription>Signup with your Google account</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
               <Button
                 type="button"
-                onClick={signinWithGoogle}
+                onClick={signupWithGoogle}
                 variant="outline"
                 className="w-full"
               >
@@ -99,7 +99,7 @@ export function SignupForm({
                     fill="currentColor"
                   />
                 </svg>
-                Login with Google
+                Signup with Google
               </Button>
 
               <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
