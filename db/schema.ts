@@ -1,61 +1,125 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  pgEnum,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
+// Enums for Better Auth
+export const roleEnum = pgEnum("role", ["USER", "ADMIN", "MODERATOR"]);
+
+// Users table (Better Auth compatible)
 export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified")
-    .$defaultFn(() => false)
-    .notNull(),
-  image: text("image"),
-  createdAt: timestamp("created_at")
-    .$defaultFn(() => /* @__PURE__ */ new Date())
-    .notNull(),
-  updatedAt: timestamp("updated_at")
-    .$defaultFn(() => /* @__PURE__ */ new Date())
-    .notNull(),
+  id: varchar("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), //nickname
+  username: varchar("username", { length: 50 }).unique(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  emailVerified: boolean("emailVerified").notNull().default(false),
+  image: varchar("image", { length: 255 }),
+  role: roleEnum("role").default("USER").notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
+// Sessions table (Better Auth compatible)
 export const session = pgTable("session", {
-  id: text("id").primaryKey(),
-  expiresAt: timestamp("expires_at").notNull(),
-  token: text("token").notNull().unique(),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-  userId: text("user_id")
+  id: varchar("id").primaryKey(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  token: varchar("token").notNull().unique(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  userId: varchar("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
 });
 
+// Accounts table (Better Auth compatible for OAuth)
 export const account = pgTable("account", {
-  id: text("id").primaryKey(),
-  accountId: text("account_id").notNull(),
-  providerId: text("provider_id").notNull(),
-  userId: text("user_id")
+  id: varchar("id").primaryKey(),
+  accountId: varchar("accountId").notNull(),
+  providerId: varchar("providerId").notNull(),
+  userId: varchar("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
-  idToken: text("id_token"),
-  accessTokenExpiresAt: timestamp("access_token_expires_at"),
-  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
-  scope: text("scope"),
-  password: text("password"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
+  accessToken: text("accessToken"),
+  refreshToken: text("refreshToken"),
+  idToken: text("idToken"),
+  accessTokenExpiresAt: timestamp("accessTokenExpiresAt"),
+  refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt"),
+  scope: varchar("scope", { length: 255 }),
+  password: varchar("password", { length: 255 }),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
+// Verification table (Better Auth compatible)
 export const verification = pgTable("verification", {
-  id: text("id").primaryKey(),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").$defaultFn(
-    () => /* @__PURE__ */ new Date()
-  ),
-  updatedAt: timestamp("updated_at").$defaultFn(
-    () => /* @__PURE__ */ new Date()
-  ),
+  id: varchar("id").primaryKey(),
+  identifier: varchar("identifier").notNull(),
+  value: varchar("value").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow(),
 });
+
+// Custom user profile extension
+export const userProfile = pgTable("userProfile", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  bio: text("bio"),
+  dateOfBirth: timestamp("dateOfBirth"),
+  phoneNumber: varchar("phoneNumber", { length: 20 }),
+  address: text("address"),
+  preferences: text("preferences"), // JSON string
+  isOnboarded: boolean("isOnboarded").default(false),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+// Relations
+export const userRelations = relations(user, ({ one, many }) => ({
+  //one user have one userProfile
+  profile: one(userProfile, {
+    fields: [user.id],
+    references: [userProfile.userId],
+  }),
+  sessions: many(session),
+  accounts: many(account),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+  //one session have one user
+  user: one(user, {
+    fields: [session.userId],
+    references: [user.id],
+  }),
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+  user: one(user, {
+    fields: [account.userId],
+    references: [user.id],
+  }),
+}));
+
+export const userProfileRelations = relations(userProfile, ({ one }) => ({
+  user: one(user, {
+    fields: [userProfile.userId],
+    references: [user.id],
+  }),
+}));
+
+export type User = typeof user.$inferSelect;
+export type NewUser = typeof user.$inferInsert;
+export type Session = typeof session.$inferSelect;
+export type Account = typeof account.$inferSelect;
+export type UserProfile = typeof userProfile.$inferSelect;
+export type NewUserProfile = typeof userProfile.$inferInsert;

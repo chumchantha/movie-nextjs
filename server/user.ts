@@ -46,3 +46,14 @@ export const signUp = async ({ email, password, name }: Signup) => {
     };
   }
 };
+
+export const logOut = async () => {
+  try {
+  } catch (error) {
+    const e = error as Error;
+    return {
+      success: false,
+      message: e.message || "Failed to signout!",
+    };
+  }
+};
